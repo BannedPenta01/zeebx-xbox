@@ -1,0 +1,368 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    O projeto do aplicativo de Xbox. Um UWP de C++/WinRT, x64.
+
+    **Só x64.** O Modo de Desenvolvedor do Xbox não aceita aplicativo de 32 bits, e o Series S|X
+    é x64. Não há configuração de ARM64 aqui de propósito: o alvo de Rust correspondente é o
+    `x86_64-uwp-windows-msvc`, tier 3, e acrescentar um segundo alvo tier 3 a um porte que ainda
+    não subiu num console é multiplicar o que pode dar errado sem nada em troca.
+
+    O `.lib` do núcleo vem do `cargo`, e não é compilado aqui: ver `compilar.ps1`. O
+    `AdditionalLibraryDirectories` abaixo aponta para onde o cargo o deixa.
+-->
+<Project DefaultTargets="Build" ToolsVersion="15.0"
+         xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{7C4B2E31-9A6D-4E52-B0F8-3D5A1E9C7B44}</ProjectGuid>
+    <RootNamespace>ZeebxXbox</RootNamespace>
+    <DefaultLanguage>pt-BR</DefaultLanguage>
+    <MinimumVisualStudioVersion>17.0</MinimumVisualStudioVersion>
+    <AppContainerApplication>true</AppContainerApplication>
+    <ApplicationType>Windows Store</ApplicationType>
+    <ApplicationTypeRevision>10.0</ApplicationTypeRevision>
+    <TargetName>ZeebxXbox</TargetName>
+    <!-- **As quatro propriedades do C++/WinRT.** Quem as lê é o
+         `Microsoft.Windows.CppWinRT.targets`, do pacote de mesmo nome que o Visual Studio traz
+         embutido e que o `compilar.ps1` desempacota em `..\packages\` (ver os dois `Import` mais
+         abaixo). São os valores que o modelo "Blank App (C++/WinRT)" do próprio VS usa.
+         `MinimalCoreWin` sai do `KernelOnly` que o `Microsoft.Cpp.AppContainerApplication.props`
+         poria: o modelo diz `true`. -->
+    <CppWinRTOptimized>true</CppWinRTOptimized>
+    <CppWinRTRootNamespaceAutoMerge>true</CppWinRTRootNamespaceAutoMerge>
+    <CppWinRTGenerateWindowsMetadata>true</CppWinRTGenerateWindowsMetadata>
+    <MinimalCoreWin>true</MinimalCoreWin>
+    <!-- **`10.0` = "o SDK mais novo que estiver instalado"**, e não um número fixo. O MSBuild o
+         resolve para o `LatestTargetPlatformVersion` (ver `Microsoft.Cpp.WindowsSDK.props`).
+         Fixar `10.0.22621.0` faria o projeto não abrir em quem só tem o 26100, e o contrário
+         também; a LEIAME pede o 22621 ou mais novo por causa do canal seguro do Xbox, não porque
+         a versão exata importe. -->
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformMinVersion>10.0.19041.0</WindowsTargetPlatformMinVersion>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+
+  <!-- **Sem `PlatformToolset` de propósito.** Fixar `v143` amarra o projeto ao Visual Studio
+       2022: o de 2026 traz o `v145` e não instala o `v143`. Em branco, o `Microsoft.Cpp.props`
+       usa o `DefaultPlatformToolset` da instalação que está compilando. -->
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='Release'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings" />
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props"
+            Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')"
+            Label="LocalAppDataPlatform" />
+  </ImportGroup>
+
+  <!--
+      **O pacote do C++/WinRT.**
+
+      Um projeto de C++/WinRT não fica de pé sem ele, e o Visual Studio 2026 o traz embutido na
+      extensão `Microsoft.Windows.CppWinRT.Dev17`
+      (`Common7\IDE\Extensions\<id>\Packages\Microsoft.Windows.CppWinRT.*.nupkg`). O
+      `compilar.ps1` o desempacota em `..\packages\` antes de chamar o MSBuild, que é o que o
+      `install.ps1` do pacote faria se o NuGet estivesse no circuito.
+
+      **Sem este `Import` o build morre em `WMC1007: Cannot resolve 'Windows.metadata'`.** O
+      `.props` é quem põe `WinMDAssembly=true` — nas palavras dele, "this causes VS to add the
+      platform WinMD references for the target SDK" — e `XamlLanguage=CppWinRT`, que é o que faz
+      o compilador de XAML procurar as referências da plataforma. Sem ele o `@(ReferencePath)`
+      fica com um item só, o `UnionMetadata\...\Facade\Windows.winmd`: um encaminhador de tipos
+      de 0,2 MB, sem tipo nenhum dentro, e o compilador não acha nem o `Windows.UI.Xaml.Page` de
+      que o `MainPage` deriva. O erro não cita o pacote nem o `Facade`, e é por isso que ele
+      custa: ele acusa o SDK, que está instalado e completo.
+  -->
+  <Import Project="..\packages\Microsoft.Windows.CppWinRT.2.0.220531.1\build\native\Microsoft.Windows.CppWinRT.props"
+          Condition="Exists('..\packages\Microsoft.Windows.CppWinRT.2.0.220531.1\build\native\Microsoft.Windows.CppWinRT.props')" />
+
+  <PropertyGroup>
+    <!-- O cargo sempre escreve em `release/`: o `compilar.ps1` compila em release nas duas
+         configurações, porque o interpretador em modo de depuração não dá quadro nenhum. -->
+    <ZeebxAlvoDoNucleo>$(MSBuildThisFileDirectory)..\..\..\target\x86_64-uwp-windows-msvc\release</ZeebxAlvoDoNucleo>
+  </PropertyGroup>
+
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <!-- **C++20, e não C++17.** O `winrt/base.h` do SDK prefere `<coroutine>`, mas em modo
+           C++17 cai no `<experimental/coroutine>`, que o STL novo transformou em erro
+           (`STL1011: ... are deprecated by Microsoft and will be REMOVED SOON`). Em C++20 o
+           C++/WinRT acha o header certo e o erro some — verificado compilando o `Renderer.cpp`. -->
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <!-- **`/ZW` desligado.** O `ApplicationType` `Windows Store` liga sozinho as extensões de
+           linguagem do WinRT (`/ZW`), que são do C++/CX — a tecnologia anterior. O `cl` recusa
+           `/ZW` junto de `/std:c++20`, com `D8016: '/ZW' and '/std:c++20' command-line options are
+           incompatible`, e para **antes de compilar arquivo nenhum**, o que faz o erro parecer do
+           projeto e não de uma opção que ninguém escreveu. O C++/WinRT não usa extensão de
+           linguagem: a projeção é o namespace `winrt::`, que vem do header do SDK. Medido: com a
+           linha em branco, `D8016`; com ela, o `cl` passa a compilar. -->
+      <CompileAsWinRT>false</CompileAsWinRT>
+      <!-- Os avisos do WinRT e das projeções são muitos e não são nossos. Nível 4 com a lista
+           abaixo é o que o template da Microsoft usa. -->
+      <WarningLevel>Level4</WarningLevel>
+      <DisableSpecificWarnings>4453;28204</DisableSpecificWarnings>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <!-- O `zeebx_xbox.h` mora em `..\include`, e o `Input.cpp` o inclui pelo nome solto: sem
+           esta linha o preprocessador não o acha (`C1083`). O `ClInclude` do projeto o mostra no
+           Solution Explorer, mas **não** o põe no caminho de busca. O `cppwinrt` do SDK já vem
+           pelo `vcvars`/MSBuild, então não entra aqui. -->
+      <AdditionalIncludeDirectories>$(MSBuildThisFileDirectory)..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <!-- **`/utf-8` não é enfeite.** O `MainPage.cpp` tem literais com acento
+           ("Não deu para abrir"), e o MSVC lê o fonte na página de código do sistema quando não
+           se diz outra coisa. Sem isto o `ã` vira `Ã£` — dois caracteres — e o aviso aparece
+           errado na tela, **sem nenhum erro de compilação**, que é o que torna o defeito caro.
+           Medido, no literal `L"Não"`: sem o flag os code units são `U+004E U+00C3 U+00A3
+           U+006F`; com ele, `U+004E U+00E3 U+006F`.
+           Sem `/await`: o flag está morto no MSVC atual, e era o que empurrava o C++/WinRT para
+           as coroutines experimentais. O `/bigobj` continua, que o C++/WinRT precisa. -->
+      <AdditionalOptions>/utf-8 /bigobj %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <Link>
+      <!-- **`Windows`, e não `Console`.** O ponto de entrada do aplicativo é o `wWinMain`, e o
+           subsistema `Console` faz o CRT procurar o `main`: o link morre em
+           `LNK2019: unresolved external symbol main referenced in function __scrt_common_main_seh`,
+           um erro que não aponta para o subsistema. Medido: o mesmo objeto liga com `Windows`.
+           Desde que o `wWinMain` passou a vir do `Generated Files\App.xaml.g.hpp`, quem o traz é
+           o compilador de XAML — mas o subsistema continua sendo escolha nossa. -->
+      <SubSystem>Windows</SubSystem>
+      <!-- **O `/MAP` fica ligado, e é para ler o `Fault offset` do WER.** Num UWP que morre não há
+           depurador para pendurar: o que sobra é um evento de "Application Error" com um
+           deslocamento dentro do `.exe`, que sozinho não diz nada. Com o `.map` ao lado, esse
+           número vira um nome de função e um offset — foi assim que o `0x2c6dcb` do primeiro
+           arranque virou `Renderer::CriaAlvo` + 123 bytes. O arquivo sai junto do `.exe` e custa
+           alguns megabytes de saída de build. -->
+      <GenerateMapFile>true</GenerateMapFile>
+      <!-- **`/WINMD` desligado.** O `Microsoft.Cpp.AppContainerApplication.props` liga por padrão
+           a geração do `.winmd` do executável, o que faz sentido para uma biblioteca de
+           componentes e não para um aplicativo — o modelo "Blank App (C++/WinRT)" do VS também o
+           desliga. Aqui quem produz metadado é o pacote do C++/WinRT, para a projeção; o ligador,
+           não. -->
+      <GenerateWindowsMetadata>false</GenerateWindowsMetadata>
+      <AdditionalLibraryDirectories>$(ZeebxAlvoDoNucleo);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <!-- **O núcleo primeiro na ordem de ligação.** O `zeebx_xbox.lib` é um `staticlib` do
+           cargo: se as bibliotecas do Windows vierem antes, o ligador resolve os símbolos do
+           CRT do núcleo contra o runtime errado e a falha aparece como um monte de
+           `LNK2019` de `__imp_*` que não têm nada a ver com o código escrito.
+
+           **O `ntdll.lib` não é enfeite.** Um `staticlib` do Rust **não** carrega as bibliotecas
+           nativas que o `std` pede: quem liga tem de as nomear, do mesmo modo que o
+           `OTHER_LDFLAGS` do iOS nomeia os frameworks. O `std` do Windows usa as funções `Nt` em
+           dois caminhos que este núcleo alcança de verdade — o `std::fs::rename`
+           (`NtSetInformationFile`) e o cano do `std::process` (`NtCreateNamedPipeFile`). Nem o
+           `WindowsApp.lib` nem o `onecore.lib` exportam essas funções; só o `ntdll.lib`. Sem ele
+           o link morre em `LNK2019: unresolved external symbol __imp_NtSetInformationFile`, e o
+           erro parece do nosso código, que não chama nada disso. Medido: sem o `ntdll.lib` o
+           link acusa oito símbolos não resolvidos; com ele, zero.
+
+           **O `mincore.lib` é o outro, e quem o escolhe é o próprio alvo do Rust.** O `std`
+           mapeia a letra de unidade para o nome do dispositivo com `QueryDosDeviceW`
+           (`sys/pal/windows/api.rs`), pedido a `kernel32.dll`. O alvo `x86_64-uwp-windows-msvc`
+           põe `mincore.lib` nos `pre-link-args`: medido com o JSON do alvo que o `rustc` imprime
+           (`-Z unstable-options` mais a opção de imprimir o `target-spec-json`), cujo
+           `pre-link-args.msvc` é `["/NOLOGO", "/APPCONTAINER", "mincore.lib"]`. Quando quem liga
+           é um `.vcxproj`, essa linha do alvo não acontece e a biblioteca tem de ser nomeada
+           aqui. O `WindowsApp.lib` — o guarda-chuva do UWP — **não** exporta `QueryDosDeviceW`;
+           o `mincore.lib`, o `onecore.lib` e o `kernel32.lib` exportam, e o `mincore.lib` é o do
+           alvo. Sem ele o link morre em
+           `LNK2001: unresolved external symbol __imp_QueryDosDeviceW`, apontando para dentro do
+           `std-*.rcgu.o` — de novo um erro que não é do nosso código. -->
+      <AdditionalDependencies>zeebx_xbox.lib;ntdll.lib;mincore.lib;d3d11.lib;dxgi.lib;xaudio2.lib;windowsapp.lib;runtimeobject.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
+    <ClCompile>
+      <PreprocessorDefinitions>_DEBUG;WINAPI_FAMILY=WINAPI_FAMILY_APP;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <Optimization>Disabled</Optimization>
+      <!-- **A CRT dinâmica, e explícita.** O `zeebx_xbox.lib` é um `staticlib` do Rust, e os
+           objetos dele referenciam a CRT na forma de importação (`__imp_realloc`,
+           `__imp_strcspn`, `__imp__beginthreadex`). Com a CRT estática — que é o que o `cl` usa
+           quando isto fica em branco — esses símbolos não existem, e o link acusa oito
+           `LNK2019` que parecem do `sqlite3.o` e são, na verdade, de escolha de runtime. A UWP
+           também espera a CRT dinâmica: o `Microsoft.CppBuild.targets` chega a avisar quando não
+           é. Medido: CRT estática, oito não-resolvidos; dinâmica, zero. -->
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
+    <ClCompile>
+      <PreprocessorDefinitions>NDEBUG;WINAPI_FAMILY=WINAPI_FAMILY_APP;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <Optimization>MaxSpeed</Optimization>
+      <!-- A CRT dinâmica pela razão do `Debug` acima — e aqui não é opcional: é o que faz os
+           `__imp_*` do núcleo resolverem. -->
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <!-- **O mapa de simbolos fica.** O relatorio de falha do Windows da apenas o deslocamento do
+           endereco (P9 do evento MoAppCrash); o mapa e o que transforma esse numero em nome de
+           funcao — foi assim que a falha do JIT num AppContainer foi localizada. Ele nao entra no
+           pacote (o layout filtra `.map` e `.pdb`), so fica ao lado do executavel. -->
+      <AdditionalOptions>/MAP /MAPINFO:EXPORTS %(AdditionalOptions)</AdditionalOptions>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <ItemGroup>
+    <ClInclude Include="pch.h" />
+    <!--
+      **O `DependentUpon` de cada par `.xaml`/`.h`/`.cpp`/`.idl` não é arrumação do Solution
+      Explorer: é o que o compilador de XAML lê.**
+
+      O `Generated Files\XamlTypeInfo.g.cpp` precisa de incluir o cabeçalho de cada página, porque
+      é lá que mora o `winrt::ZeebxXbox::implementation::MainPage` que a tabela `TypeInfos[]`
+      instancia. O nome do cabeçalho sai daqui: um `ClInclude` que declara
+      `<DependentUpon>MainPage.xaml</DependentUpon>` é o código-fonte daquela página. Sem o
+      `DependentUpon` o `#include` não é gerado, e o arquivo gerado não compila:
+
+          XamlTypeInfo.g.cpp(92,60): error C2039: 'MainPage': is not a member of
+                                    'winrt::ZeebxXbox::implementation'
+          XamlTypeInfo.g.cpp(88,16): error C2737: 'TypeInfos': const object must be initialized
+
+      Foi o que aconteceu aqui: com os itens soltos, sem `DependentUpon`, os dois erros acima
+      apareceram; com o metadado, o `#include "MainPage.h"` sai e eles somem. Nada nos nomes dos
+      arquivos nem nos `.idl` muda isso.
+
+      Os nomes `App.h`/`MainPage.h`, sem o `.xaml`, são a convenção do modelo "Blank App
+      (C++/WinRT)" do VS — e é de lá que o `DependentUpon` também vem, nos três grupos
+      (`ClInclude`, `ClCompile`, `Midl`).
+    -->
+    <ClInclude Include="App.h">
+      <DependentUpon>App.xaml</DependentUpon>
+    </ClInclude>
+    <ClInclude Include="MainPage.h">
+      <DependentUpon>MainPage.xaml</DependentUpon>
+    </ClInclude>
+    <ClInclude Include="Renderer.h" />
+    <ClInclude Include="Audio.h" />
+    <ClInclude Include="Input.h" />
+    <ClInclude Include="Jit.h" />
+    <ClInclude Include="..\include\zeebx_xbox.h" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ClCompile Include="pch.cpp">
+      <PrecompiledHeader>Create</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="App.cpp">
+      <DependentUpon>App.xaml</DependentUpon>
+    </ClCompile>
+    <ClCompile Include="MainPage.cpp">
+      <DependentUpon>MainPage.xaml</DependentUpon>
+    </ClCompile>
+    <ClCompile Include="Renderer.cpp" />
+    <ClCompile Include="Audio.cpp" />
+    <ClCompile Include="Input.cpp" />
+    <ClCompile Include="Jit.cpp" />
+    <!-- **O `module.g.cpp` que o `cppwinrt` gera.** É ele que traz o `WINRT_GetActivationFactory`
+         do executável, onde as fábricas declaradas nos `.idl` ficam registradas. Sem esta linha o
+         `MainPage.g.cpp` gera a fábrica da página e ninguém a registra: o aplicativo compila,
+         liga, e o `LoadComponent` do XAML falha em tempo de execução por não achar
+         `ZeebxXbox.MainPage`. É um `ClCompile` do diretório gerado, como no modelo do VS. -->
+    <ClCompile Include="$(GeneratedFilesDir)module.g.cpp" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+        **Os dois `.idl`, e eles não são opcionais.**
+
+        O compilador de XAML só emite o conector de C++/WinRT de uma página — o
+        `MainPage.xaml.g.h`, com um acessor para cada `x:Name` e o `MainPageT` — quando a página
+        existe como `runtimeclass` no metadado do projeto. Quem a declara é o `MainPage.idl`. Sem
+        ele o compilador escreve, no lugar, o conector antigo de C++/CX: um `MainPage.g.h` com
+        `ref class` e `Platform::Object^`, que o `cl` não compila sem `/ZW` e que ainda ocupa o
+        nome de que o `cppwinrt` precisa. Medido: sem os `.idl`, o build para num `C4430: missing
+        type specifier - int assumed` na linha 14 de um arquivo gerado que ninguém escreveu.
+
+        O `App.idl` não declara classe: existe para o `cppwinrt` emitir a projeção do namespace.
+    -->
+    <Midl Include="App.idl">
+      <DependentUpon>App.xaml</DependentUpon>
+    </Midl>
+    <Midl Include="MainPage.idl">
+      <DependentUpon>MainPage.xaml</DependentUpon>
+    </Midl>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ApplicationDefinition Include="App.xaml">
+      <SubType>Designer</SubType>
+    </ApplicationDefinition>
+    <Page Include="MainPage.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+  </ItemGroup>
+
+  <ItemGroup>
+    <AppxManifest Include="Package.appxmanifest">
+      <SubType>Designer</SubType>
+    </AppxManifest>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Image Include="Assets\StoreLogo.png" />
+    <Image Include="Assets\Square44x44Logo.png" />
+    <Image Include="Assets\Square150x150Logo.png" />
+    <Image Include="Assets\Wide310x150Logo.png" />
+    <Image Include="Assets\SplashScreen.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Os dois estágios de shader, compilados por `fxc` no build e copiados para o pacote.
+         **Sem compilação em tempo de execução**: o `d3dcompiler_47.dll` não é dependência que
+         um pacote de UWP deva carregar, e o console não o traz.
+
+         **O `fxc` vem por caminho completo, e não pelo `PATH`.** O MSBuild não põe o `bin` do
+         SDK no `PATH` do processo de build, então um `fxc` solto aqui falha com "não é
+         reconhecido como comando". A expressão é a mesma que o próprio
+         `Microsoft.Cpp.WindowsSDK.props` usa para achar as ferramentas do SDK. -->
+    <CustomBuild Include="shaders\quad.hlsl">
+      <Message>Compilando o shader quad.hlsl</Message>
+      <Command>"$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\fxc.exe" /nologo /T vs_5_0 /E VSMain /Fo"$(ProjectDir)quad.vs.cso" "%(FullPath)"
+"$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\fxc.exe" /nologo /T ps_5_0 /E PSMain /Fo"$(ProjectDir)quad.ps.cso" "%(FullPath)"</Command>
+      <Outputs>$(ProjectDir)quad.vs.cso;$(ProjectDir)quad.ps.cso</Outputs>
+    </CustomBuild>
+    <None Include="quad.vs.cso">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="quad.ps.cso">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+  </ItemGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+    <!-- O par do `Import` do `.props`: é este `.targets` que traz o alvo que funde os `.winmd`
+         da plataforma num só (`CppWinRTMergeProjectWinMDInputs`) e gera o `module.g.cpp`. -->
+    <Import Project="..\packages\Microsoft.Windows.CppWinRT.2.0.220531.1\build\native\Microsoft.Windows.CppWinRT.targets"
+            Condition="Exists('..\packages\Microsoft.Windows.CppWinRT.2.0.220531.1\build\native\Microsoft.Windows.CppWinRT.targets')" />
+  </ImportGroup>
+</Project>

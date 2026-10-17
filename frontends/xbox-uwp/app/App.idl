@@ -1,0 +1,10 @@
+// O `App` não precisa ser uma `runtimeclass`: quem o constrói é o `wWinMain` que o compilador de
+// XAML gera (`Generated Files\App.xaml.g.hpp`), e o `EntryPoint` do manifesto o encontra por ali.
+//
+// Este arquivo existe pelo namespace. O `cppwinrt` só emite a projeção `winrt/ZeebxXbox.h` se
+// houver um `.idl` declarando o namespace no `.winmd` do projeto, e é essa projeção que o
+// `MainPage.g.h` inclui. Sem ele, o `MainPage.idl` sozinho não gera nada que o `MainPage.g.h`
+// consiga incluir.
+namespace ZeebxXbox
+{
+}

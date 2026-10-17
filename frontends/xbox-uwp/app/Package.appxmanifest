@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  **O `mp:PhoneIdentity` fica, e é o trecho mais estranho do manifesto.**
+
+  Ele vem do Windows Phone 8.1 e não diz nada sobre um emulador de Xbox. Mas a ferramenta de
+  empacotamento do UWP o exige de **todo** aplicativo UWP — e só dele: um pacote de desktop bridge
+  passa sem, porque o `runFullTrust` o dispensa. Sem ele o build morre depois de o `.exe` estar
+  ligado, num passo que ninguém associa ao manifesto:
+
+      error APPX1673: App manifest is missing required element 'PhoneIdentity'.
+
+  Medido: tirando só a declaração `xmlns:mp` (e o `mp` de `IgnorableNamespaces`), sem o elemento,
+  o erro continua igual. Não é a declaração do namespace que o dispara; é o tipo de projeto.
+
+  **Os dois valores não são validados.** A própria documentação da Microsoft diz que qualquer GUID
+  serve para o `PhoneProductId` e que o `PhonePublisherId` de zeros é o que o modelo do VS traz.
+  Aqui o `PhoneProductId` é o `ProjectGuid` deste `.vcxproj`.
+-->
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap uap3 mp rescap">
+
+  <!-- **A versão precisa ser maior que a instalada no console.** Um `.msix` da mesma versão não se
+       instala por cima: o `AppXSvc` recusa. O número subiu de 0.4.2.0 para 0.4.3.0 pela correção do B,
+       de 0.4.3.0 para 0.4.4.0 por esta, que é a que faz o quadro aparecer — um pacote 0.4.3.0 não
+       entra por cima de outro 0.4.3.0 —, de 0.4.4.0 para 0.4.5.0 pela prateleira e pelos menus, e de
+       0.4.5.0 para 0.4.6.0 por esta: é o pacote em que o núcleo recompila o código do jogo (o JIT)
+       em vez de interpretá-lo, que foi o que tirou a engasgada. Quem já instalou o anterior precisa
+       deste número para não ter de desinstalar. Na próxima versão do projeto os dois números se
+       encontram (o `Cargo.toml` da raiz ainda diz 0.4.2), e a tela Sobre mostra os dois lado a lado
+       enquanto isso. Quem preferir manter o número: desinstale o aplicativo no console — o
+       `LocalState` vai junto — e instale este mesmo pacote. -->
+  <Identity Name="ZeebxTeam.Zeebx"
+            Publisher="CN=ZeebxTeam"
+            Version="0.4.6.0" />
+
+  <mp:PhoneIdentity PhoneProductId="7C4B2E31-9A6D-4E52-B0F8-3D5A1E9C7B44"
+                    PhonePublisherId="00000000-0000-0000-0000-000000000000" />
+
+  <Properties>
+    <DisplayName>Zeebx</DisplayName>
+    <PublisherDisplayName>ZeebxTeam</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Universal"
+                        MinVersion="10.0.19041.0"
+                        MaxVersionTested="10.0.22621.0" />
+    <!-- O console só aceita UWP: não há outro caminho para rodar código nosso num Xbox que não
+         seja o Modo de Desenvolvedor, e lá o que instala é um pacote como este. -->
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="pt-BR" />
+    <Resource Language="en-US" />
+  </Resources>
+
+  <Applications>
+    <Application Id="App"
+                 Executable="ZeebxXbox.exe"
+                 EntryPoint="ZeebxXbox.App">
+      <uap:VisualElements DisplayName="Zeebx"
+                          Description="Emulador de Zeebo"
+                          BackgroundColor="#0E1013"
+                          Square150x150Logo="Assets\Square150x150Logo.png"
+                          Square44x44Logo="Assets\Square44x44Logo.png">
+        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" />
+        <uap:SplashScreen Image="Assets\SplashScreen.png" BackgroundColor="#0E1013" />
+      </uap:VisualElements>
+
+      <!--
+        **A associação de tipos de arquivo não é enfeite de "Abrir com": ela é a licença de leitura
+        numa unidade removível.**
+
+        A capacidade `removableStorage` (lá embaixo) dá acesso a arquivo num pendrive ou num HD
+        externo **filtrado pelas extensões declaradas aqui**. Sem esta lista o
+        `KnownFolders.RemovableDevices` nem devolve as unidades, e a varredura daria zero jogos com
+        a unidade cheia — o pior tipo de erro, porque é silencioso.
+
+        As quatro são as que o `library::scan` abre: o `.mod` é o jogo, o `.mif` é o manifesto de
+        onde sai o título, e o `.zip`/`.7z` é o jogo embalado. Tirar uma delas tira a leitura
+        daquele tipo no console, e só no console.
+      -->
+      <Extensions>
+        <uap:Extension Category="windows.fileTypeAssociation">
+          <uap:FileTypeAssociation Name="zeebx-jogo">
+            <uap:DisplayName>Jogo de Zeebo</uap:DisplayName>
+            <uap:Logo>Assets\Square44x44Logo.png</uap:Logo>
+            <uap:SupportedFileTypes>
+              <uap:FileType>.mod</uap:FileType>
+              <uap:FileType>.mif</uap:FileType>
+              <uap:FileType>.zip</uap:FileType>
+              <uap:FileType>.7z</uap:FileType>
+            </uap:SupportedFileTypes>
+          </uap:FileTypeAssociation>
+        </uap:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <!-- **A ordem aqui não é estilo: é esquema.** O validador do pacote exige os
+         `DeviceCapability` por último. Com um `Capability` depois deles o build morre em
+         `APPX0501 ... error C00CE014: Element 'Capability' is unexpected according to content
+         model of parent element 'Capabilities'. Expecting: 'DeviceCapability'` — um erro que fala
+         de "content model" e não diz "mova a linha". -->
+    <!-- Duas capacidades RESTRITAS, e as duas são o motivo de este pacote ser o que é. -->
+
+    <!-- `expandedResources` é o que faz o aplicativo rodar com os recursos de um JOGO, e não de
+         um app: sem ela o UWP no Xbox limita o processo a ~1 GB e a ~45% da GPU, e um emulador
+         num teto de 1 GB não vai longe. É a diferença entre "abre" e "roda". -->
+    <rescap:Capability Name="expandedResources" />
+
+    <!-- `codeGeneration` libera o `VirtualAlloc` + `VirtualProtectFromApp`, que é como o
+         Dynarmic pede a página executável. **Ainda não é usado**: o núcleo deste porte é o
+         interpretador. A capacidade está declarada para a segunda etapa não precisar de um
+         manifesto novo — ver `docs/implementacao/25-frontend-xbox-uwp.md`. -->
+    <rescap:Capability Name="codeGeneration" />
+
+    <Capability Name="internetClient" />
+
+    <!-- **`removableStorage` é o que abre o pendrive e o HD externo.** Sem ela o
+         `KnownFolders.RemovableDevices` não devolve unidade nenhuma e a tela de fontes fica sem o
+         que listar. Não é capacidade restrita: não pede aprovação da Store.
+
+         O par dela é a associação de tipos de arquivo declarada lá em cima: **as duas são
+         necessárias, e nenhuma serve sozinha.**
+
+         E não há `broadFileSystemAccess` no lugar dela: a Microsoft lista essa capacidade como
+         **não suportada no Xbox** — e é o console o alvo. `removableStorage` é o caminho
+         documentado, o mesmo que os outros emuladores de Xbox usam.
+
+         A pasta `LocalState\roms` continua valendo: ela é do pacote, não precisa de capacidade
+         nenhuma, e é por onde o Portal do Dispositivo põe arquivo. -->
+    <DeviceCapability Name="removableStorage" />
+  </Capabilities>
+</Package>

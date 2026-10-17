@@ -1,0 +1,26 @@
+// **A `MainPage` tem de existir como `runtimeclass`, e isto é o que a declara.**
+//
+// Um projeto de C++/WinRT não declara a página num cabeçalho escrito à mão: o `cppwinrt` gera o
+// `MainPage.g.h` (a base `MainPage_base`, o `GetRuntimeClassName`, a fábrica) e o compilador de
+// XAML gera o `MainPage.xaml.g.h` (o `MainPageT`, com um acessor para cada `x:Name` do
+// `MainPage.xaml`). O `MainPage.xaml.h` inclui o primeiro, e o primeiro inclui o segundo.
+//
+// **Sem este arquivo o compilador de XAML não emite o conector de C++/WinRT.** Ele só o faz para
+// uma página que exista como `runtimeclass` no metadado do projeto; sem isso ele cai no conector
+// antigo, de C++/CX, e escreve um `MainPage.g.h` com `ref class` e `Platform::Object^` — um
+// arquivo que o `cl` não compila sem `/ZW`, e que ainda por cima ocuparia o nome de que o
+// `cppwinrt` precisa. Medido: com o `.idl`, o `MainPage.g.h` sai da `C++/WinRT v2.0.220531.1`
+// com 22 erros de sintaxe a menos; sem ele, o build para no primeiro `ref class`.
+//
+// A superfície pública é só o construtor porque o XAML daqui não usa `x:Bind` nem `Binding` em
+// membro nosso: ele nomeia elementos (`x:Name`) e liga eventos (`Click="OnAtualizar"`), e as duas
+// coisas o compilador de XAML resolve pelo `MainPageT` e pelo `get_self<D>`, sem passar pelo
+// `.winmd`. Um `x:Bind` para uma propriedade nossa **teria** de ser declarado aqui.
+namespace ZeebxXbox
+{
+    [default_interface]
+    runtimeclass MainPage : Windows.UI.Xaml.Controls.Page
+    {
+        MainPage();
+    }
+}

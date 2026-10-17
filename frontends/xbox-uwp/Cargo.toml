@@ -1,0 +1,31 @@
+[package]
+name = "zeebx-xbox"
+version = "0.4.2"
+edition = "2024"
+license = "GPL-2.0-or-later"
+description = "O frontend de Xbox Series S|X do Zeebx (UWP)"
+publish = false
+
+# O Visual Studio liga um `.lib` estático num aplicativo C++/WinRT. O `rlib` existe para o
+# `cargo test` deste pacote: um crate só de `staticlib` não produz binário de teste, e é assim
+# que a conversão de quadro, a varredura e os nomes dos botões continuam provados sem console.
+[lib]
+name = "zeebx_xbox"
+crate-type = ["staticlib", "rlib"]
+
+[dependencies]
+# **Sem a feature `desktop`, e sem `audio` nem `gl`.**
+#
+# O aplicativo de Xbox é UWP: quem tem o ciclo de vida, a tela, a placa de som e o controle é o
+# C++/WinRT. Aqui dentro só mora a fronteira, exatamente como no iOS. Diferente do iOS, porém,
+# aqui **não** se usa o `cpal`: a placa é o XAudio2, chamado do lado C++, e as amostras saem por
+# `Mixer::render` — o mesmo caminho que o core Libretro usa, e o motivo pelo qual a regra "o
+# núcleo não linka biblioteca de host" continua valendo neste alvo.
+#
+# Sem `gl` porque não há contexto de OpenGL no UWP: não há EGL, e o `glutin` linka EGL/GLX/WGL.
+# O quadro sai do rasterizador de software (`start_software_with_storage_installed`) e o D3D11
+# o sobe como textura.
+#
+# `soundfont` entra: é Rust puro (MIT) e dá MIDI pelo banco de amostras sem trazer biblioteca de
+# host. Sem ele a música dos jogos é a tabela de timbres — que já é o padrão quando não há `.sf2`.
+zeebx = { path = "../..", default-features = false, features = ["soundfont"] }
