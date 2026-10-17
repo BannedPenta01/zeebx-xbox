@@ -76,7 +76,7 @@ nenhuma, e a mesma tela funciona sem pedir nada. E não há `broadFileSystemAcce
 Microsoft lista essa capacidade como **não suportada no Xbox**.
 
 **O núcleo só lê o que o recorte do UWP deixa.** Medido no PC: escolhida uma pasta comum
-(`C:\Users\janmi\Downloads`, que existe e abre no Explorer), a ABI recusou com **`-1`** — daqui de
+(`%USERPROFILE%\Downloads`, que existe e abre no Explorer), a ABI recusou com **`-1`** — daqui de
 dentro, `is_dir()` responde `false` para uma pasta fora do que o AppContainer enxerga, e a tela diz
 que a pasta não existe. No PC isso é o esperado; no console quem abre a unidade é a capacidade
 `removableStorage`, e é por isso que a rota de lá é a do arquivo. Cada tentativa vira uma linha do
@@ -531,7 +531,7 @@ hoje, com a medida ao lado:
   direcional andava pela estante, o cartão se destacava, e o A não abria nada** — o `ItemClick` que
   estava ligado só chega pelo ponteiro, e o `Button` do cartão estava sem `Click`.
 - **A caixa de pasta do sistema abre, e o que ela devolve chega ao núcleo.** Medido no PC: a caixa
-  abriu, a pasta escolhida foi `C:\Users\janmi\Downloads`, a permissão foi guardada, e a ABI recusou
+  abriu, a pasta escolhida foi `%USERPROFILE%\Downloads`, a permissão foi guardada, e a ABI recusou
   o caminho com `-1` — o caminho inteiro do seletor foi percorrido, e parou onde tinha de parar neste
   PC (ver [*Os jogos podem vir de um pendrive*](#os-jogos-podem-vir-de-um-pendrive-ou-de-um-hd-externo)).
   A caixa de arquivo — a rota do console — usa a mesma mecânica, e a pasta sai do caminho do arquivo

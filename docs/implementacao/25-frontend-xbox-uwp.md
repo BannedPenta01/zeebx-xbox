@@ -208,7 +208,7 @@ diz por quê foi exatamente a queixa que esta tela veio consertar. O explorador 
 tem o que mostrar — unidade na tomada, uma pasta aberta, ou um recado dentro dele.
 
 **A pasta que o jogador escolhe nem sempre é uma pasta que o núcleo lê.** Medido no PC: escolhida
-`C:\Users\janmi\Downloads` — que existe, e abre no Explorer —, a ABI recusou com **`-1`**. O recorte
+`%USERPROFILE%\Downloads` — que existe, e abre no Explorer —, a ABI recusou com **`-1`**. O recorte
 do UWP é quem manda: do lado de dentro do aplicativo, `is_dir()` responde `false` para o que o
 AppContainer não enxerga, por mais que a caixa do sistema o tenha concedido. No PC isso é o esperado
 (quem lê pastas de usuário é o desktop, que não é sandbox nenhum), e a tela diz que a pasta não
@@ -880,7 +880,7 @@ desenvolvimento. "Compila", "liga" e "roda" continuam sendo três coisas diferen
   `GridViewItem` do cartão. (`FocusManager::FindFirstFocusableElement` não serve: ele devolve a
   própria lista, que é quem recusa o foco.)
 - **A caixa de pasta do sistema abre no PC, e o que ela devolve chega ao núcleo.** Medido: a caixa
-  abriu (uma janela `#32770`, "Select Folder"), o jogador escolheu `C:\Users\janmi\Downloads`, a
+  abriu (uma janela `#32770`, "Select Folder"), o jogador escolheu `%USERPROFILE%\Downloads`, a
   permissão foi guardada, e a ABI recusou o caminho com `-1` pela razão do sandbox acima. O caminho
   inteiro do seletor foi percorrido, e parou onde tinha de parar neste PC. O código que a lista
   devolve quando o jogador cancela — `nada` — também é anotado: "cancelou" e "a caixa não abriu de
