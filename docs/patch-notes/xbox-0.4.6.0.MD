@@ -66,7 +66,9 @@ Como instalar, o passo a passo inteiro está em
    `Root`; no console, quem instala o certificado é a implantação pelo **Visual Studio**, que é o
    caminho mais garantido. Certificado autoassinado só é aceito por quem confia nele, e **não é
    `CurrentUser`**: quem instala pacote é o `AppXSvc`, um serviço, e serviço não tem repositório de
-   usuário
+   usuário. Ele vale até **16 de outubro de 2027** — se um dia a instalação for recusada citando o
+   certificado, é desta data que se trata, e a saída é assinar o pacote de novo (`compilar.ps1
+   -Pacote`)
 3. **Instale o pacote** — Home → Add or install package, no Portal do Dispositivo, ou
    `Add-AppxPackage` no PC
 4. Ponha os jogos em `LocalState\roms` pelo Portal do Dispositivo, ou aponte uma pasta pelo próprio
